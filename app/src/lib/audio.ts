@@ -1,22 +1,26 @@
 /**
- * AudioEngine — Web Audio graph matching the original index.html prototype.
+ * AudioEngine — unipolar tremolo using ConstantSourceNode + LFO.
  *
  * Per-band graph:
  *   OscillatorNode (sine)
- *     → tremoloGain (GainNode, centre 1.0)
- *         ← lfoGain (GainNode, depth 0.5) ← lfo (OscillatorNode, sine, tremoloRate Hz)
- *     → gainL (GainNode) → StereoPannerNode (pan=-1) → masterGain → destination
- *     → gainR (GainNode) → StereoPannerNode (pan=+1) → masterGain → destination
+ *     → tremoloGain (GainNode, base = 0, driven by two modulation sources)
+ *         ← ConstantSource(offset = 1 − depth/2)   DC floor
+ *         ← lfoGain(gain = depth/2) ← lfo(sine, tremoloRate Hz)
+ *       effective gain = (1−depth/2) + sin×(depth/2)
+ *       range: (1−depth) … 1.0  — always positive, never clips to silence
+ *     → gainL → StereoPannerNode(pan=-1) → masterGain → destination
+ *     → gainR → StereoPannerNode(pan=+1) → masterGain → destination
  */
 
 import type { Band } from './types'
 
 const LEVEL_SCALE = 0.001
-const SMOOTH_TC   = 0.008 // seconds — short ramp to avoid gain-change clicks
+const SMOOTH_TC   = 0.008 // s — prevents audible clicks on gain changes
 
 interface BandNodes {
   osc:         OscillatorNode
   lfo:         OscillatorNode
+  dc:          ConstantSourceNode
   lfoGain:     GainNode
   tremoloGain: GainNode
   gainL:       GainNode
@@ -37,14 +41,12 @@ class AudioEngine {
     this.masterGain.gain.value = masterVolume / 100
     this.masterGain.connect(this.ctx.destination)
 
+    const d = lfoDepth / 100
     for (const band of bands) {
-      this.buildBand(band, tremoloRate, lfoDepth / 100)
+      this.buildBand(band, tremoloRate, d)
     }
 
-    // Resume in case the browser auto-suspended (mobile)
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume()
-    }
+    if (this.ctx.state === 'suspended') this.ctx.resume()
   }
 
   stop(): void {
@@ -76,11 +78,12 @@ class AudioEngine {
     }
   }
 
+  /** depth: 0–100 → gain oscillates between (1−d) and 1.0 */
   setLfoDepth(depth: number): void {
-    // depth is 0–100; map to 0.0–1.0 LFO gain
-    const gain = depth / 100
+    const d = depth / 100
     for (const nodes of this.bands.values()) {
-      nodes.lfoGain.gain.value = gain
+      nodes.dc.offset.value    = 1 - d / 2
+      nodes.lfoGain.gain.value = d / 2
     }
   }
 
@@ -90,28 +93,36 @@ class AudioEngine {
 
   // ── Private ────────────────────────────────────────────────
 
-  private buildBand(band: Band, tremoloRate: number, lfoDepth: number): void {
+  private buildBand(band: Band, tremoloRate: number, depth: number): void {
     const ctx = this.ctx!
     const out = this.masterGain!
 
+    // Carrier
     const osc = ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = band.freq
 
+    // Tremolo gain node — base value 0, driven entirely by modulation sources
     const tremoloGain = ctx.createGain()
-    tremoloGain.gain.value = 1.0
+    tremoloGain.gain.value = 0
 
+    // DC offset: keeps gain floor at (1 − depth)
+    const dc = ctx.createConstantSource()
+    dc.offset.value = 1 - depth / 2
+    dc.connect(tremoloGain.gain)
+
+    // LFO: sine ±1 scaled to ±depth/2
     const lfo = ctx.createOscillator()
     lfo.type = 'sine'
     lfo.frequency.value = tremoloRate
-
     const lfoGain = ctx.createGain()
-    lfoGain.gain.value = lfoDepth
-
+    lfoGain.gain.value = depth / 2
     lfo.connect(lfoGain)
     lfoGain.connect(tremoloGain.gain)
+
     osc.connect(tremoloGain)
 
+    // Left channel
     const gainL = ctx.createGain()
     gainL.gain.value = band.enabled ? band.levels.L * LEVEL_SCALE : 0
     const panL = ctx.createStereoPanner()
@@ -120,6 +131,7 @@ class AudioEngine {
     gainL.connect(panL)
     panL.connect(out)
 
+    // Right channel
     const gainR = ctx.createGain()
     gainR.gain.value = band.enabled ? band.levels.R * LEVEL_SCALE : 0
     const panR = ctx.createStereoPanner()
@@ -128,12 +140,10 @@ class AudioEngine {
     gainR.connect(panR)
     panR.connect(out)
 
-    osc.start()
-    lfo.start()
+    osc.start(); lfo.start(); dc.start()
 
-    this.bands.set(band.freq, { osc, lfo, lfoGain, tremoloGain, gainL, gainR })
+    this.bands.set(band.freq, { osc, lfo, dc, lfoGain, tremoloGain, gainL, gainR })
   }
 }
 
-// Singleton — one engine for the lifetime of the app
 export const audioEngine = new AudioEngine()
