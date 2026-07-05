@@ -81,7 +81,8 @@ export const useSessionStore = create<SessionStore>()(
         const saved = ((persisted as any)?.bands ?? []) as Band[]
         const fresh = initBands()
         const bands = fresh.map(f => saved.find(s => s.freq === f.freq) ?? f)
-        return { ...current, ...(persisted as any), bands }
+        // Never restore a running session — audio requires a fresh user gesture
+        return { ...current, ...(persisted as any), bands, running: false }
       },
     }
   )
