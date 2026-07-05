@@ -27,6 +27,7 @@ interface SessionStore {
   bands: Band[]
   masterVolume: number
   tremoloRate: number
+  lfoDepth: number      // 0–100, maps to 0.0–1.0 LFO gain depth
   // session
   running: boolean
   timerSeconds: number
@@ -35,6 +36,7 @@ interface SessionStore {
   adjustLevel: (freq: number, ear: Ear, delta: number) => void
   setMasterVolume: (v: number) => void
   setTremoloRate: (v: number) => void
+  setLfoDepth: (v: number) => void
   setRunning: (v: boolean) => void
   tickTimer: () => void
   resetTimer: () => void
@@ -46,6 +48,7 @@ export const useSessionStore = create<SessionStore>()(
       bands: initBands(),
       masterVolume: lsGet('master', 50),
       tremoloRate: lsGet('tremolo', 7),
+      lfoDepth: lsGet('lfoDepth', 50),
       running: false,
       timerSeconds: lsGet('timer', 3600),
 
@@ -65,6 +68,7 @@ export const useSessionStore = create<SessionStore>()(
 
       setMasterVolume: v => set({ masterVolume: Math.min(100, Math.max(0, v)) }),
       setTremoloRate: v => set({ tremoloRate: Math.min(25, Math.max(1, v)) }),
+      setLfoDepth: v => set({ lfoDepth: Math.min(100, Math.max(0, v)) }),
 
       setRunning: (v) => set({ running: v }),
 

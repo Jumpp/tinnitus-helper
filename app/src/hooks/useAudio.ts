@@ -13,7 +13,7 @@ export function useAudio() {
       // ── Start / stop ───────────────────────────────────────
       if (state.running !== prev.running) {
         if (state.running) {
-          audioEngine.start(state.bands, state.masterVolume, state.tremoloRate)
+          audioEngine.start(state.bands, state.masterVolume, state.tremoloRate, state.lfoDepth)
         } else {
           audioEngine.stop()
         }
@@ -30,6 +30,11 @@ export function useAudio() {
       // ── Tremolo rate ───────────────────────────────────────
       if (state.tremoloRate !== prev.tremoloRate) {
         audioEngine.setTremoloRate(state.tremoloRate)
+      }
+
+      // ── LFO depth ─────────────────────────────────────────
+      if (state.lfoDepth !== prev.lfoDepth) {
+        audioEngine.setLfoDepth(state.lfoDepth)
       }
 
       // ── Per-band levels / enabled ──────────────────────────

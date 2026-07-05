@@ -6,8 +6,8 @@ import { SessionCircle } from '../components/SessionCircle'
 import { useSessionStore } from '../store/sessionStore'
 
 export function SessionView() {
-  const { bands, running, timerSeconds, masterVolume, tremoloRate,
-          setRunning, tickTimer, resetTimer, setMasterVolume, setTremoloRate } = useSessionStore()
+  const { bands, running, timerSeconds, masterVolume, tremoloRate, lfoDepth,
+          setRunning, tickTimer, resetTimer, setMasterVolume, setTremoloRate, setLfoDepth } = useSessionStore()
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -97,17 +97,33 @@ export function SessionView() {
           {showAdvanced && (
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-              <div className="rounded-xl bg-surface px-4 py-3 flex items-center justify-between">
-                <div>
-                  <span className="text-sm text-muted">Oscillation rate</span>
-                  <p className="text-xs text-dim mt-0.5">Tremolo speed applied to all bands</p>
+              <div className="rounded-xl bg-surface px-4 py-3 flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-muted">Oscillation rate</span>
+                    <p className="text-xs text-dim mt-0.5">Tremolo speed</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setTremoloRate(tremoloRate - 1)}
+                      className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">−</button>
+                    <span className="w-12 text-center text-sm tabular-nums text-text">{tremoloRate} Hz</span>
+                    <button onClick={() => setTremoloRate(tremoloRate + 1)}
+                      className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">+</button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setTremoloRate(tremoloRate - 1)}
-                    className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">−</button>
-                  <span className="w-12 text-center text-sm tabular-nums text-text">{tremoloRate} Hz</span>
-                  <button onClick={() => setTremoloRate(tremoloRate + 1)}
-                    className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">+</button>
+                <div className="h-px bg-border" />
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm text-muted">Oscillation depth</span>
+                    <p className="text-xs text-dim mt-0.5">Tremolo intensity</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => setLfoDepth(lfoDepth - 5)}
+                      className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">−</button>
+                    <span className="w-12 text-center text-sm tabular-nums text-text">{lfoDepth}%</span>
+                    <button onClick={() => setLfoDepth(lfoDepth + 5)}
+                      className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">+</button>
+                  </div>
                 </div>
               </div>
             </motion.div>

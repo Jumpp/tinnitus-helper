@@ -30,7 +30,7 @@ class AudioEngine {
 
   // ── Lifecycle ──────────────────────────────────────────────
 
-  start(bands: Band[], masterVolume: number, tremoloRate: number): void {
+  start(bands: Band[], masterVolume: number, tremoloRate: number, lfoDepth: number): void {
     if (this.ctx) return
     this.ctx = new AudioContext()
     this.masterGain = this.ctx.createGain()
@@ -38,7 +38,7 @@ class AudioEngine {
     this.masterGain.connect(this.ctx.destination)
 
     for (const band of bands) {
-      this.buildBand(band, tremoloRate)
+      this.buildBand(band, tremoloRate, lfoDepth / 100)
     }
 
     // Resume in case the browser auto-suspended (mobile)
@@ -76,13 +76,21 @@ class AudioEngine {
     }
   }
 
+  setLfoDepth(depth: number): void {
+    // depth is 0–100; map to 0.0–1.0 LFO gain
+    const gain = depth / 100
+    for (const nodes of this.bands.values()) {
+      nodes.lfoGain.gain.value = gain
+    }
+  }
+
   get running(): boolean {
     return this.ctx !== null
   }
 
   // ── Private ────────────────────────────────────────────────
 
-  private buildBand(band: Band, tremoloRate: number): void {
+  private buildBand(band: Band, tremoloRate: number, lfoDepth: number): void {
     const ctx = this.ctx!
     const out = this.masterGain!
 
@@ -98,7 +106,7 @@ class AudioEngine {
     lfo.frequency.value = tremoloRate
 
     const lfoGain = ctx.createGain()
-    lfoGain.gain.value = 0.5
+    lfoGain.gain.value = lfoDepth
 
     lfo.connect(lfoGain)
     lfoGain.connect(tremoloGain.gain)
