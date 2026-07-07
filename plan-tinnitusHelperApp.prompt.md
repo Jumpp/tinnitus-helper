@@ -69,6 +69,15 @@ Convert the existing single-file `index.html` frequency therapy web app into a p
 
 ### 5. Progress / Dashboard (`/progress`)
 
+> **⚠️ Blocked: Audio normalisation required before progress data is meaningful.**
+> Session levels (L/R slider values × master volume) are unitless integers right now. To compare sessions over time or show threshold trends, we must express levels as a calibrated dBSPL equivalent. This requires:
+> - Reading system/device volume at session start via the Capacitor native bridge (`@capacitor-community/volume-buttons`)
+> - Combining: `effective_gain = (slider_level × LEVEL_SCALE) × (master_volume / 100) × (device_volume_fraction)`
+> - Storing this normalised value alongside each session snapshot in Supabase
+> - Only then can threshold deltas across sessions be interpreted meaningfully
+>
+> Until normalisation is implemented, the progress view should display session duration/streak only, not threshold trends.
+
 - Gamification: streak counter (days in a row), compare to previous sessions (give a point score out of a 100)
 - Calibration history chart — are the threshold levels changing over time?
 - biological age of hearing (optional, fun metric)?
