@@ -214,3 +214,9 @@ tinnitus-helper-app/
 3. **Pricing localisation**: RevenueCat handles this automatically
 4. **Web version**: keep the GitHub Pages version free/open? Or redirect to app?
 5. **Analytics**: Posthog (privacy-friendly) vs. nothing
+
+Notes:
+
+- Move the tremolo speed from 6-9Hz to avoid "burning" that frequency. Maybe start with a lower value, and ramp it up/down. We could change every minute or so. We dont want to make the change too drastic, lets change to a neighboring hz, so 6hz,7hz,8hz, 9hz,8hz,7hz,6hz.
+- Oscillation intensity 40% seems to be the best
+- When pressing the card, isolate that track so you can easily see if that frequency is the one being heard. This should can/should not interfere with other buttons (volume sliders, toggle) in that card.

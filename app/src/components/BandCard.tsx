@@ -1,14 +1,12 @@
+import { useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { type Band, type Ear } from '../lib/types'
 import { useSessionStore } from '../store/sessionStore'
 
-function Stepper({
-  freq, ear, value, align,
-}: {
-  freq: number
-  ear: Ear
-  value: number
-  align: 'left' | 'right'
+const HOLD_MS = 400
+
+function Stepper({ freq, ear, value, align }: {
+  freq: number; ear: Ear; value: number; align: 'left' | 'right'
 }) {
   const adjustLevel = useSessionStore(s => s.adjustLevel)
   const btn =
@@ -20,9 +18,9 @@ function Stepper({
         {ear === 'L' ? 'Left' : 'Right'}
       </span>
       <div className="flex items-center gap-2">
-        <button onPointerDown={() => adjustLevel(freq, ear, -1)} className={btn} aria-label={`Decrease ${ear}`}>−</button>
+        <button onPointerDown={() => adjustLevel(freq, ear, -1)} className={btn}>−</button>
         <span className="w-8 text-center text-base tabular-nums font-semibold text-text">{value}</span>
-        <button onPointerDown={() => adjustLevel(freq, ear, +1)} className={btn} aria-label={`Increase ${ear}`}>+</button>
+        <button onPointerDown={() => adjustLevel(freq, ear, +1)} className={btn}>+</button>
       </div>
     </div>
   )
@@ -38,34 +36,66 @@ function Toggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void 
         enabled ? 'bg-accent border-accent' : 'bg-surface-2 border-border'
       }`}
     >
-      <span
-        className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 ${
-          enabled ? 'left-5.5 bg-white' : 'left-0.5 bg-dim'
-        }`}
-      />
+      <span className={`absolute top-0.5 w-5 h-5 rounded-full transition-all duration-200 ${
+        enabled ? 'left-5.5 bg-white' : 'left-0.5 bg-dim'
+      }`} />
     </button>
   )
 }
 
 export function BandCard({ band, dimmed = false }: { band: Band; dimmed?: boolean }) {
   const setBandEnabled = useSessionStore(s => s.setBandEnabled)
+  const soloFreq       = useSessionStore(s => s.soloFreq)
+  const setSoloFreq    = useSessionStore(s => s.setSoloFreq)
+
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const isSoloed  = soloFreq === band.freq
+  const otherSoloed = soloFreq !== null && soloFreq !== band.freq
+
+  function onPointerDown(e: React.PointerEvent) {
+    // Don't hijack taps on interactive children
+    if ((e.target as Element).closest('button')) return
+    holdTimer.current = setTimeout(() => {
+      setSoloFreq(isSoloed ? null : band.freq)
+    }, HOLD_MS)
+  }
+
+  function onPointerUp() {
+    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null }
+  }
+
+  // Base opacity: dimmed (inactive section), other-soloed, or normal
+  const opacity = isSoloed ? 1 : otherSoloed ? 0.25 : dimmed ? 0.5 : 1
 
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: dimmed ? 0.5 : 1, y: 0 }}
+      animate={{ opacity, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.18 }}
-      className="rounded-xl bg-surface overflow-hidden"
+      className={`rounded-xl bg-surface overflow-hidden select-none ${
+        isSoloed ? 'ring-1 ring-accent' : ''
+      }`}
+      onPointerDown={onPointerDown}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerUp}
+      onPointerCancel={onPointerUp}
     >
-      {/* Header — always visible */}
+      {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
-        <span className="text-sm font-semibold text-text tracking-wide">{band.label}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-text tracking-wide">{band.label}</span>
+          {isSoloed && (
+            <span className="text-[9px] font-bold tracking-widest uppercase px-1.5 py-0.5 rounded bg-accent text-white">
+              solo
+            </span>
+          )}
+        </div>
         <Toggle enabled={band.enabled} onToggle={() => setBandEnabled(band.freq, !band.enabled)} />
       </div>
 
-      {/* Expanded content — only when enabled */}
+      {/* Expanded L/R controls */}
       <AnimatePresence initial={false}>
         {band.enabled && (
           <motion.div

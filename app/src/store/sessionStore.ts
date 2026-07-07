@@ -27,7 +27,8 @@ interface SessionStore {
   bands: Band[]
   masterVolume: number
   tremoloRate: number
-  lfoDepth: number      // 0–100, maps to 0.0–1.0 LFO gain depth
+  lfoDepth: number
+  soloFreq: number | null
   // session
   running: boolean
   timerSeconds: number
@@ -37,6 +38,7 @@ interface SessionStore {
   setMasterVolume: (v: number) => void
   setTremoloRate: (v: number) => void
   setLfoDepth: (v: number) => void
+  setSoloFreq: (freq: number | null) => void
   setRunning: (v: boolean) => void
   tickTimer: () => void
   resetTimer: () => void
@@ -48,7 +50,8 @@ export const useSessionStore = create<SessionStore>()(
       bands: initBands(),
       masterVolume: lsGet('master', 50),
       tremoloRate: lsGet('tremolo', 7),
-      lfoDepth: lsGet('lfoDepth', 50),
+      lfoDepth: lsGet('lfoDepth', 40),
+      soloFreq: null,
       running: false,
       timerSeconds: lsGet('timer', 3600),
 
@@ -69,6 +72,7 @@ export const useSessionStore = create<SessionStore>()(
       setMasterVolume: v => set({ masterVolume: Math.min(100, Math.max(0, v)) }),
       setTremoloRate: v => set({ tremoloRate: Math.min(25, Math.max(1, v)) }),
       setLfoDepth: v => set({ lfoDepth: Math.min(100, Math.max(0, v)) }),
+      setSoloFreq: freq => set({ soloFreq: freq }),
 
       setRunning: (v) => set({ running: v }),
 
@@ -86,7 +90,7 @@ export const useSessionStore = create<SessionStore>()(
         const fresh = initBands()
         const bands = fresh.map(f => saved.find(s => s.freq === f.freq) ?? f)
         // Never restore a running session — audio requires a fresh user gesture
-        return { ...current, ...(persisted as any), bands, running: false }
+        return { ...current, ...(persisted as any), bands, running: false, soloFreq: null }
       },
     }
   )
