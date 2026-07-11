@@ -1,21 +1,23 @@
 /**
- * AudioEngine — unipolar tremolo using ConstantSourceNode + LFO.
+ * AudioEngine — unipolar tremolo + full volume normalization.
+ *
+ * Master gain formula:
+ *   masterGain = deviceVolume × 10^(fineTuneDb / 20)
+ *
+ *   deviceVolume  — system output volume fraction (0.01–1.0), read by VolumeService
+ *   fineTuneDb    — user ±dB offset to compensate for headphone sensitivity
  *
  * Per-band graph:
  *   OscillatorNode (sine)
- *     → tremoloGain (GainNode, base = 0, driven by two modulation sources)
- *         ← ConstantSource(offset = 1 − depth/2)   DC floor
- *         ← lfoGain(gain = depth/2) ← lfo(sine, tremoloRate Hz)
- *       effective gain = (1−depth/2) + sin×(depth/2)
- *       range: (1−depth) … 1.0  — always positive, never clips to silence
- *     → gainL → StereoPannerNode(pan=-1) → masterGain → destination
- *     → gainR → StereoPannerNode(pan=+1) → masterGain → destination
+ *     → tremoloGain ← ConstantSource(1−d/2) + lfoGain(d/2) ← lfo(sine)
+ *     → gainL → StereoPannerNode(−1) → masterGain → destination
+ *     → gainR → StereoPannerNode(+1) → masterGain → destination
  */
 
 import type { Band } from './types'
 
 const LEVEL_SCALE = 0.001
-const SMOOTH_TC   = 0.008 // s — prevents audible clicks on gain changes
+const SMOOTH_TC   = 0.008
 
 interface BandNodes {
   osc:         OscillatorNode
@@ -28,22 +30,26 @@ interface BandNodes {
 }
 
 class AudioEngine {
-  private ctx:        AudioContext | null = null
-  private masterGain: GainNode     | null = null
-  private bands:      Map<number, BandNodes> = new Map()
+  private ctx:          AudioContext | null = null
+  private masterGain:   GainNode     | null = null
+  private bands:        Map<number, BandNodes> = new Map()
+  private deviceVolume  = 1.0
+  private fineTuneDb    = 0
 
   // ── Lifecycle ──────────────────────────────────────────────
 
-  start(bands: Band[], masterVolume: number, tremoloRate: number, lfoDepth: number): void {
+  start(bands: Band[], fineTuneDb: number, lfoDepth: number): void {
     if (this.ctx) return
+    this.fineTuneDb = fineTuneDb
+
     this.ctx = new AudioContext()
     this.masterGain = this.ctx.createGain()
-    this.masterGain.gain.value = masterVolume / 100
+    this.masterGain.gain.value = this.computeMasterGain()
     this.masterGain.connect(this.ctx.destination)
 
     const d = lfoDepth / 100
     for (const band of bands) {
-      this.buildBand(band, tremoloRate, d)
+      this.buildBand(band, d)
     }
 
     if (this.ctx.state === 'suspended') this.ctx.resume()
@@ -67,9 +73,18 @@ class AudioEngine {
     nodes.gainR.gain.setTargetAtTime(enabled ? levels.R * LEVEL_SCALE : 0, t, SMOOTH_TC)
   }
 
-  setMasterVolume(value: number): void {
-    if (!this.masterGain || !this.ctx) return
-    this.masterGain.gain.setTargetAtTime(value / 100, this.ctx.currentTime, SMOOTH_TC)
+  /**
+   * Called by VolumeService whenever system volume changes.
+   * deviceVolume: 0.01–1.0
+   */
+  setDeviceVolume(v: number): void {
+    this.deviceVolume = Math.max(0.01, v)
+    this.applyMasterGain()
+  }
+
+  setFineTuneDb(db: number): void {
+    this.fineTuneDb = db
+    this.applyMasterGain()
   }
 
   setTremoloRate(rate: number): void {
@@ -78,7 +93,6 @@ class AudioEngine {
     }
   }
 
-  /** depth: 0–100 → gain oscillates between (1−d) and 1.0 */
   setLfoDepth(depth: number): void {
     const d = depth / 100
     for (const nodes of this.bands.values()) {
@@ -93,28 +107,37 @@ class AudioEngine {
 
   // ── Private ────────────────────────────────────────────────
 
-  private buildBand(band: Band, tremoloRate: number, depth: number): void {
+  private computeMasterGain(): number {
+    return this.deviceVolume * Math.pow(10, this.fineTuneDb / 20)
+  }
+
+  private applyMasterGain(): void {
+    if (!this.masterGain || !this.ctx) return
+    this.masterGain.gain.setTargetAtTime(
+      this.computeMasterGain(),
+      this.ctx.currentTime,
+      SMOOTH_TC,
+    )
+  }
+
+  private buildBand(band: Band, depth: number): void {
     const ctx = this.ctx!
     const out = this.masterGain!
 
-    // Carrier
     const osc = ctx.createOscillator()
     osc.type = 'sine'
     osc.frequency.value = band.freq
 
-    // Tremolo gain node — base value 0, driven entirely by modulation sources
     const tremoloGain = ctx.createGain()
     tremoloGain.gain.value = 0
 
-    // DC offset: keeps gain floor at (1 − depth)
     const dc = ctx.createConstantSource()
     dc.offset.value = 1 - depth / 2
     dc.connect(tremoloGain.gain)
 
-    // LFO: sine ±1 scaled to ±depth/2
     const lfo = ctx.createOscillator()
     lfo.type = 'sine'
-    lfo.frequency.value = tremoloRate
+    lfo.frequency.value = 7  // will be set by cycling logic immediately after start
     const lfoGain = ctx.createGain()
     lfoGain.gain.value = depth / 2
     lfo.connect(lfoGain)
@@ -122,7 +145,6 @@ class AudioEngine {
 
     osc.connect(tremoloGain)
 
-    // Left channel
     const gainL = ctx.createGain()
     gainL.gain.value = band.enabled ? band.levels.L * LEVEL_SCALE : 0
     const panL = ctx.createStereoPanner()
@@ -131,7 +153,6 @@ class AudioEngine {
     gainL.connect(panL)
     panL.connect(out)
 
-    // Right channel
     const gainR = ctx.createGain()
     gainR.gain.value = band.enabled ? band.levels.R * LEVEL_SCALE : 0
     const panR = ctx.createStereoPanner()

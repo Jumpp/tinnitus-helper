@@ -1,23 +1,30 @@
 import { useEffect } from 'react'
 import { audioEngine } from '../lib/audio'
 import { useSessionStore } from '../store/sessionStore'
+import { initVolumeService, getDeviceVolume, subscribeVolume } from '../lib/volume'
 
-// Tremolo auto-cycles through these Hz values, one step per minute.
-// Avoids prolonged stimulation at a single modulation frequency.
 const TREMOLO_CYCLE = [6, 7, 8, 9, 8, 7]
 
 export function useAudio() {
   useEffect(() => {
+    // Init volume service once — safe no-op in browser
+    initVolumeService()
+
     let cycleId: ReturnType<typeof setInterval> | null = null
     let cycleIndex = 0
 
+    // Wire device volume changes to audio engine
+    const unsubVolume = subscribeVolume(v => audioEngine.setDeviceVolume(v))
+
     const unsub = useSessionStore.subscribe((state, prev) => {
 
-      // ── Start / stop + tremolo cycle ────────────────────────
+      // ── Start / stop ─────────────────────────────────────────
       if (state.running !== prev.running) {
         if (state.running) {
-          audioEngine.start(state.bands, state.masterVolume, state.tremoloRate, state.lfoDepth)
-          // Begin cycling immediately at index 0
+          audioEngine.start(state.bands, state.fineTuneDb, state.lfoDepth)
+          // Apply current device volume immediately
+          audioEngine.setDeviceVolume(getDeviceVolume())
+
           cycleIndex = 0
           audioEngine.setTremoloRate(TREMOLO_CYCLE[0])
           cycleId = setInterval(() => {
@@ -33,17 +40,17 @@ export function useAudio() {
 
       if (!audioEngine.running) return
 
-      // ── Master volume ────────────────────────────────────────
-      if (state.masterVolume !== prev.masterVolume) {
-        audioEngine.setMasterVolume(state.masterVolume)
+      // ── Fine-tune dB ──────────────────────────────────────────
+      if (state.fineTuneDb !== prev.fineTuneDb) {
+        audioEngine.setFineTuneDb(state.fineTuneDb)
       }
 
-      // ── LFO depth ────────────────────────────────────────────
+      // ── LFO depth ─────────────────────────────────────────────
       if (state.lfoDepth !== prev.lfoDepth) {
         audioEngine.setLfoDepth(state.lfoDepth)
       }
 
-      // ── Solo changed ─────────────────────────────────────────
+      // ── Solo ──────────────────────────────────────────────────
       if (state.soloFreq !== prev.soloFreq) {
         state.bands.forEach(band => {
           const soloing = state.soloFreq !== null
@@ -53,7 +60,7 @@ export function useAudio() {
         return
       }
 
-      // ── Per-band levels / enabled ────────────────────────────
+      // ── Per-band levels / enabled ─────────────────────────────
       state.bands.forEach((band, i) => {
         const prevBand = prev.bands[i]
         if (!prevBand) return
@@ -71,6 +78,7 @@ export function useAudio() {
 
     return () => {
       unsub()
+      unsubVolume()
       if (cycleId) clearInterval(cycleId)
     }
   }, [])

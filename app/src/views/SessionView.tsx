@@ -7,8 +7,8 @@ import { ThemePicker } from '../components/ThemePicker'
 import { useSessionStore } from '../store/sessionStore'
 
 export function SessionView() {
-  const { bands, running, timerSeconds, masterVolume, lfoDepth,
-          setRunning, tickTimer, resetTimer, setMasterVolume, setLfoDepth } = useSessionStore()
+  const { bands, running, timerSeconds, fineTuneDb, lfoDepth,
+          setRunning, tickTimer, resetTimer, setFineTuneDb, setLfoDepth } = useSessionStore()
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -74,15 +74,20 @@ export function SessionView() {
         </div>
       )}
 
-      {/* Master volume */}
+      {/* Volume fine-tune */}
       <div className="w-full max-w-md px-4 mt-6">
         <div className="rounded-xl bg-surface px-4 py-3 flex items-center justify-between">
-          <span className="text-sm text-muted">Volume fine-tune</span>
+          <div>
+            <span className="text-sm text-muted">Volume fine-tune</span>
+            <p className="text-xs text-dim mt-0.5">Offset for headphone sensitivity</p>
+          </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setMasterVolume(masterVolume - 5)}
+            <button onClick={() => setFineTuneDb(fineTuneDb - 1)}
               className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">−</button>
-            <span className="w-8 text-center text-sm tabular-nums text-text">{masterVolume}</span>
-            <button onClick={() => setMasterVolume(masterVolume + 5)}
+            <span className="w-14 text-center text-sm tabular-nums text-text">
+              {fineTuneDb > 0 ? `+${fineTuneDb}` : fineTuneDb} dB
+            </span>
+            <button onClick={() => setFineTuneDb(fineTuneDb + 1)}
               className="w-9 h-9 rounded-md bg-surface-2 text-muted text-lg flex items-center justify-center active:bg-surface-active">+</button>
           </div>
         </div>

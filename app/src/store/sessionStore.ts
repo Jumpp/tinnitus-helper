@@ -25,7 +25,7 @@ function initBands(): Band[] {
 interface SessionStore {
   // bands
   bands: Band[]
-  masterVolume: number
+  fineTuneDb: number    // ±dB offset on top of device volume normalisation
   tremoloRate: number
   lfoDepth: number
   soloFreq: number | null
@@ -35,7 +35,7 @@ interface SessionStore {
   // actions
   setBandEnabled: (freq: number, enabled: boolean) => void
   adjustLevel: (freq: number, ear: Ear, delta: number) => void
-  setMasterVolume: (v: number) => void
+  setFineTuneDb: (v: number) => void
   setTremoloRate: (v: number) => void
   setLfoDepth: (v: number) => void
   setSoloFreq: (freq: number | null) => void
@@ -48,7 +48,7 @@ export const useSessionStore = create<SessionStore>()(
   persist(
     (set) => ({
       bands: initBands(),
-      masterVolume: lsGet('master', 50),
+      fineTuneDb: lsGet('fineTuneDb', 0),
       tremoloRate: lsGet('tremolo', 7),
       lfoDepth: lsGet('lfoDepth', 40),
       soloFreq: null,
@@ -69,7 +69,7 @@ export const useSessionStore = create<SessionStore>()(
           ),
         })),
 
-      setMasterVolume: v => set({ masterVolume: Math.min(100, Math.max(0, v)) }),
+      setFineTuneDb: v => set({ fineTuneDb: Math.min(12, Math.max(-12, v)) }),
       setTremoloRate: v => set({ tremoloRate: Math.min(25, Math.max(1, v)) }),
       setLfoDepth: v => set({ lfoDepth: Math.min(100, Math.max(0, v)) }),
       setSoloFreq: freq => set({ soloFreq: freq }),

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Capacitor native platforms — regenerated via `npx cap add`
+ios/
+android/
