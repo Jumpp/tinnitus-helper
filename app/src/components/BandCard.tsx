@@ -1,9 +1,6 @@
-import { useRef } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { type Band, type Ear } from '../lib/types'
 import { useSessionStore } from '../store/sessionStore'
-
-const HOLD_MS = 400
 
 function Stepper({ freq, ear, value, align }: {
   freq: number; ear: Ear; value: number; align: 'left' | 'right'
@@ -48,20 +45,17 @@ export function BandCard({ band, dimmed = false }: { band: Band; dimmed?: boolea
   const soloFreq       = useSessionStore(s => s.soloFreq)
   const setSoloFreq    = useSessionStore(s => s.setSoloFreq)
 
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isSoloed  = soloFreq === band.freq
+  const isSoloed    = soloFreq === band.freq
   const otherSoloed = soloFreq !== null && soloFreq !== band.freq
 
   function onPointerDown(e: React.PointerEvent) {
-    // Don't hijack taps on interactive children
     if ((e.target as Element).closest('button')) return
-    holdTimer.current = setTimeout(() => {
-      setSoloFreq(isSoloed ? null : band.freq)
-    }, HOLD_MS)
+    setSoloFreq(band.freq)
   }
 
-  function onPointerUp() {
-    if (holdTimer.current) { clearTimeout(holdTimer.current); holdTimer.current = null }
+  function onPointerUp(e: React.PointerEvent) {
+    if ((e.target as Element).closest('button')) return
+    if (isSoloed) setSoloFreq(null)
   }
 
   // Base opacity: dimmed (inactive section), other-soloed, or normal
@@ -79,8 +73,8 @@ export function BandCard({ band, dimmed = false }: { band: Band; dimmed?: boolea
       }`}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
-      onPointerLeave={onPointerUp}
-      onPointerCancel={onPointerUp}
+      onPointerLeave={() => { if (isSoloed) setSoloFreq(null) }}
+      onPointerCancel={() => { if (isSoloed) setSoloFreq(null) }}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3">
