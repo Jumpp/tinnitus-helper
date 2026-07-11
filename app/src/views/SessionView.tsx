@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { BandCard } from '../components/BandCard'
 import { SessionCircle } from '../components/SessionCircle'
+import { ThemePicker } from '../components/ThemePicker'
 import { useSessionStore } from '../store/sessionStore'
 
 export function SessionView() {
@@ -31,6 +32,7 @@ export function SessionView() {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center pb-24">
+      <ThemePicker />
 
       {/* App label */}
       <div className="w-full max-w-md px-4 pt-10 pb-2 flex justify-center">
