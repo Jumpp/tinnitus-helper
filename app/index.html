@@ -10,8 +10,8 @@
       (function () {
         var p = new URLSearchParams(window.location.search).get('p');
         if (p) {
-          var decoded = decodeURIComponent(p);
-          window.history.replaceState(null, null, '/' + decoded);
+          // URLSearchParams already decodes percent-encoding; avoid double-decoding.
+          window.history.replaceState(null, null, '/' + p);
         }
       })();
     </script>
