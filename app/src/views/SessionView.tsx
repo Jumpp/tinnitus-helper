@@ -26,7 +26,6 @@ export function SessionView() {
     if (timerSeconds === 0 && running) { setRunning(false); resetTimer() }
   }, [timerSeconds, running, setRunning, resetTimer])
 
-  const isUrgent = timerSeconds <= 60 && running
   const activeBands   = bands.filter(b => b.enabled)
   const inactiveBands = bands.filter(b => !b.enabled)
 
@@ -46,7 +45,6 @@ export function SessionView() {
         <SessionCircle
           running={running}
           timerSeconds={timerSeconds}
-          isUrgent={isUrgent}
           onClick={() => setRunning(!running)}
         />
       </div>

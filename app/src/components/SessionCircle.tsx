@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 interface Props {
   running: boolean
   timerSeconds: number
-  isUrgent: boolean
   onClick: () => void
 }
 
@@ -18,11 +17,9 @@ const R = 100
 const CIRC = 2 * Math.PI * R
 const TIMER_TOTAL = 3600
 
-export function SessionCircle({ running, timerSeconds, isUrgent, onClick }: Props) {
-  const accent = isUrgent ? 'var(--color-danger)' : 'var(--color-accent)'
-  const accentFaint = isUrgent
-    ? 'rgba(239,68,68,0.15)'
-    : 'color-mix(in srgb, var(--color-accent) 15%, transparent)'
+export function SessionCircle({ running, timerSeconds, onClick }: Props) {
+  const accent = 'var(--color-accent)'
+  const accentFaint = 'color-mix(in srgb, var(--color-accent) 15%, transparent)'
 
   // Stroke offset tracks time remaining: 0 = full circle, CIRC = empty
   const progressOffset = CIRC * (1 - timerSeconds / TIMER_TOTAL)
@@ -100,7 +97,7 @@ export function SessionCircle({ running, timerSeconds, isUrgent, onClick }: Prop
           className="tabular-nums font-light tracking-tight"
           style={{
             fontSize: 42,
-            color: isUrgent ? 'var(--color-danger)' : 'var(--color-text)',
+            color: 'var(--color-text)',
           }}
         >
           {fmt(timerSeconds)}
