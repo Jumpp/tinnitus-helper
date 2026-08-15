@@ -81,7 +81,7 @@ export const useSessionStore = create<SessionStore>()(
       tickTimer: () =>
         set(s => ({ timerSeconds: Math.max(0, s.timerSeconds - 1) })),
 
-      resetTimer: () => set({ timerSeconds: 3600 }),
+      resetTimer: () => set({ timerSeconds: 3600, timerDate: new Date().toISOString().slice(0, 10) }),
     }),
     {
       name: 'tinnitus-session',
