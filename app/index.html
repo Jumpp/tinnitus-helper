@@ -5,6 +5,22 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>app</title>
+    <script>
+      // Restore path encoded by 404.html redirect
+      (function() {
+        var qs = window.location.search;
+        var p = qs && qs.match(/[?&]p=([^&]*)/);
+        var h = qs && qs.match(/[?&]h=([^&]*)/);
+        if (p) {
+          window.history.replaceState(
+            null, null,
+            window.location.pathname.replace(/\/$/, '') +
+            decodeURIComponent(p[1]) +
+            (h ? decodeURIComponent(h[1]) : '')
+          );
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
