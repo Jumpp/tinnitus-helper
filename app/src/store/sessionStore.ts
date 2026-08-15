@@ -32,6 +32,7 @@ interface SessionStore {
   // session
   running: boolean
   timerSeconds: number
+  timerDate: string     // ISO date (YYYY-MM-DD) the timer was last saved for
   // actions
   setBandEnabled: (freq: number, enabled: boolean) => void
   adjustLevel: (freq: number, ear: Ear, delta: number) => void
@@ -54,6 +55,7 @@ export const useSessionStore = create<SessionStore>()(
       soloFreq: null,
       running: false,
       timerSeconds: lsGet('timer', 3600),
+      timerDate: new Date().toISOString().slice(0, 10),
 
       setBandEnabled: (freq, enabled) =>
         set(s => ({
@@ -79,7 +81,7 @@ export const useSessionStore = create<SessionStore>()(
       tickTimer: () =>
         set(s => ({ timerSeconds: Math.max(0, s.timerSeconds - 1) })),
 
-      resetTimer: () => set({ timerSeconds: 3600 }),
+      resetTimer: () => set({ timerSeconds: 3600, timerDate: new Date().toISOString().slice(0, 10) }),
     }),
     {
       name: 'tinnitus-session',
@@ -90,7 +92,12 @@ export const useSessionStore = create<SessionStore>()(
         const fresh = initBands()
         const bands = fresh.map(f => saved.find(s => s.freq === f.freq) ?? f)
         // Never restore a running session — audio requires a fresh user gesture
-        return { ...current, ...(persisted as any), bands, running: false, soloFreq: null }
+        // Reset timer when the stored date is different from today (new day)
+        const today = new Date().toISOString().slice(0, 10)
+        const savedDate = (persisted as any)?.timerDate ?? ''
+        const timerSeconds = savedDate === today ? (persisted as any)?.timerSeconds ?? 3600 : 3600
+        const timerDate = today
+        return { ...current, ...(persisted as any), bands, running: false, soloFreq: null, timerSeconds, timerDate }
       },
     }
   )
