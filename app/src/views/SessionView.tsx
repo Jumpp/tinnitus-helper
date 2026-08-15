@@ -8,25 +8,27 @@ import { useSessionStore } from '../store/sessionStore'
 
 export function SessionView() {
   const { bands, running, timerSeconds, fineTuneDb, lfoDepth,
-          setRunning, tickTimer, resetTimer, setFineTuneDb, setLfoDepth } = useSessionStore()
+          setRunning, tickTimer, resetTimer, setTimerDate, setFineTuneDb, setLfoDepth } = useSessionStore()
 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
   useEffect(() => {
     if (running) {
-      intervalRef.current = setInterval(() => tickTimer(), 1000)
+      intervalRef.current = setInterval(() => {
+        tickTimer()
+        setTimerDate(new Date().toISOString().slice(0, 10))
+      }, 1000)
     } else {
       if (intervalRef.current) clearInterval(intervalRef.current)
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [running, tickTimer])
+  }, [running, tickTimer, setTimerDate])
 
   useEffect(() => {
     if (timerSeconds === 0 && running) { setRunning(false); resetTimer() }
   }, [timerSeconds, running, setRunning, resetTimer])
 
-  const isUrgent = timerSeconds <= 60 && running
   const activeBands   = bands.filter(b => b.enabled)
   const inactiveBands = bands.filter(b => !b.enabled)
 
@@ -46,7 +48,6 @@ export function SessionView() {
         <SessionCircle
           running={running}
           timerSeconds={timerSeconds}
-          isUrgent={isUrgent}
           onClick={() => setRunning(!running)}
         />
       </div>

@@ -32,6 +32,7 @@ interface SessionStore {
   // session
   running: boolean
   timerSeconds: number
+  timerDate: string   // ISO date string 'YYYY-MM-DD' of when timer was last saved
   // actions
   setBandEnabled: (freq: number, enabled: boolean) => void
   adjustLevel: (freq: number, ear: Ear, delta: number) => void
@@ -42,6 +43,7 @@ interface SessionStore {
   setRunning: (v: boolean) => void
   tickTimer: () => void
   resetTimer: () => void
+  setTimerDate: (d: string) => void
 }
 
 export const useSessionStore = create<SessionStore>()(
@@ -53,7 +55,8 @@ export const useSessionStore = create<SessionStore>()(
       lfoDepth: lsGet('lfoDepth', 40),
       soloFreq: null,
       running: false,
-      timerSeconds: lsGet('timer', 3600),
+      timerSeconds: 3600,
+      timerDate: '',
 
       setBandEnabled: (freq, enabled) =>
         set(s => ({
@@ -79,7 +82,9 @@ export const useSessionStore = create<SessionStore>()(
       tickTimer: () =>
         set(s => ({ timerSeconds: Math.max(0, s.timerSeconds - 1) })),
 
-      resetTimer: () => set({ timerSeconds: 3600 }),
+      resetTimer: () => set({ timerSeconds: 3600, timerDate: new Date().toISOString().slice(0, 10) }),
+
+      setTimerDate: (d) => set({ timerDate: d }),
     }),
     {
       name: 'tinnitus-session',
@@ -90,7 +95,12 @@ export const useSessionStore = create<SessionStore>()(
         const fresh = initBands()
         const bands = fresh.map(f => saved.find(s => s.freq === f.freq) ?? f)
         // Never restore a running session — audio requires a fresh user gesture
-        return { ...current, ...(persisted as any), bands, running: false, soloFreq: null }
+        const p = persisted as any
+        const today = new Date().toISOString().slice(0, 10)
+        const savedDate = p?.timerDate ?? ''
+        const timerSeconds = savedDate === today ? (p?.timerSeconds ?? 3600) : 3600
+        const timerDate = savedDate === today ? savedDate : today
+        return { ...current, ...p, bands, running: false, soloFreq: null, timerSeconds, timerDate }
       },
     }
   )
