@@ -14,7 +14,7 @@ export default function App() {
   useAudio()
 
   return (
-    <BrowserRouter basename="/tinnitus-helper">
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <Routes>
         <Route
           path="/"
