@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <script>
+      // SPA redirect: encode the path into the query string so GitHub Pages
+      // serves index.html, which will then restore the URL.
+      var l = window.location;
+      var base = l.pathname.split('/').slice(0, 2).join('/').replace(/\/$/, '');
+      l.replace(
+        l.protocol + '//' + l.host + base +
+        '/?p=' + encodeURIComponent(l.pathname.slice(1) + (l.search ? '?' + l.search.slice(1) : '') + l.hash)
+      );
+    </script>
+  </head>
+  <body></body>
+</html>
